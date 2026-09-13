@@ -1,72 +1,94 @@
 # MandiMitra
 
-Website: [mandimitra.work.gd](https://mandimitra.work.gd)
+A farmer procurement application for booking mandi visits, following queues, and recording weighing, procurement, and external payment references.
 
-## Source code map
+**[Open MandiMitra](https://mandimitra.work.gd)** · [Visitor guide](docs/LIVE_SITE.md) · [Local setup](docs/DEVELOPMENT.md) · [Deployment](docs/DEPLOYMENT.md) · [Security](SECURITY.md)
 
-- `app/` and `components/`: frontend pages and UI.
-- `app/api/[...path]/route.ts`: backend HTTP entry point.
-- `lib/service.ts`: backend business logic and authorization.
-- `db/`: database schema and runtime adapter.
-- `drizzle/`: SQL migrations.
-- `tests/service.test.mjs`: backend integration tests.
-- `.env.example`: configuration template without credentials.
+**Status:** deployed portfolio/pilot application. Government integration, bank settlement, and a field-tested production rollout are not included. The public repository contains frontend and backend source, not live database records or hosting credentials.
 
-This repository contains application source, not the hosted database contents or runtime credentials. Hosting and ChatGPT authentication require the existing Sites environment or adaptation for a different host. Uploading this code to GitHub does not move the running backend to GitHub Pages.
+## What works
 
-A deployed procurement application based on `Mandimitra@SIH.pdf`. Real records start empty. Automated verification fixtures are isolated in an in-memory test database and are never seeded into the live application.
+| Area | Implemented | Boundary |
+| --- | --- | --- |
+| Accounts | ChatGPT sign-in, persistent profiles, administrator and centre-scoped staff roles | Production identity requires the Sites authentication gateway |
+| Farmer workflow | Profile verification, crop registration, slot booking, printable passes | Staff must verify the farmer before booking |
+| Capacity | Atomic slot limits, idempotent booking, one non-cancelled token per farmer/day and per crop lot | Fourteen-day window; weekly opening days and hours; no date-specific holiday exceptions |
+| Queue | Check-in, staff calling, desk limits, polling and waiting-time estimates | Polls every 15 seconds, or 60 seconds in low-data mode; estimates are not guarantees |
+| Procurement | Accepted weight, agreed rate, integer-paise totals and event history | Staff enter actual procurement details |
+| Payments | Records a staff-entered reference for an external payment | Does not transfer money or verify bank settlement |
+| Languages | English/Hindi interface labels and crop/status names | User content and some validation errors are not translated |
+| Load estimates | Booking counts and a same-weekday historical baseline | Not a trained ML model; a baseline needs at least three recorded days |
 
-## First use
+No official mandi directory or sample procurement data is seeded into production. An empty centre list means an operator has not configured an active centre.
 
-1. Open the private site as its owner, sign in with ChatGPT, and complete the profile. While `BOOTSTRAP_ADMIN_ENABLED=true` and the database has no users, this first authenticated registration becomes the sole administrator. The site must remain owner-private until that registration is complete. Do not use this bootstrap mode on an uninitialised public site.
-2. In **Manage mandis**, add a centre you are authorised to operate. Enter its actual address and coordinates, working days and hours, accepted crops, hourly capacity, desks, and processing-time estimate.
-3. After the administrator has been registered, turn off `BOOTSTRAP_ADMIN_ENABLED` before widening site access. Manage site access and custom DNS through the hosting provider. Signing into the app alone does not override the site's hosting access policy.
-4. Farmers register profiles and select a verification centre. The administrator can assign existing accounts as staff at one centre. Staff verify farmers in person.
-5. Farmers register a crop lot and book an available slot. Staff check them in on their appointment date, call the next arrival, weigh, record procurement, and record an actual external payment reference.
+## Try the application
 
-## Implemented workflows
+1. Open the [website](https://mandimitra.work.gd). Public browsing does not grant staff access.
+2. Sign in with ChatGPT and complete your profile when you need account features.
+3. Choose an available verification centre. Booking requires in-person verification by that centre's staff.
+4. Register a crop lot, book a future available slot, and use your pass to follow the queue.
 
-- English and Hindi interface labels, crop names, and status labels; user-entered content and some server validation errors remain in their original language.
-- Authenticated, persistent profiles, scoped staff roles, in-person farmer verification, and crop registration.
-- Atomic hourly capacity checks, one non-cancelled token per farmer per day, one non-cancelled procurement per registered lot, and idempotent booking keys.
-- Fourteen-day booking window with Indian Standard Time dates; configured holidays/working days and opening hours.
-- Mandi comparison by actual booked capacity, optional browser geolocation, and Haversine straight-line distance. No unverified official mandi directory is seeded.
-- Actual booking load plus a same-weekday historical baseline when at least three recorded days exist. This baseline is labelled as an estimate; it is not a trained ML model.
-- Queue updates every 15 seconds (60 seconds in low-data mode), paused when the document is hidden. ETA uses recent measured service durations once five usable samples exist; otherwise it uses the configured duration. Unfinished checked-in queues carry over midnight.
-- Staff queue order, desk-capacity checks, weighing, accepted weight, agreed rate, integer-paise totals, and externally completed payment records.
-- Versioned procurement events, user-owned in-app notifications, cancellation before check-in, and printable passes/records.
-- Cross-origin write protection, server-side role/ownership checks, parameterised SQL, validation, bounded queries, indexes, and recoverable errors.
+The live site stores submitted records. For experiments or screenshots containing invented people, use the isolated local setup instead. See the [visitor guide](docs/LIVE_SITE.md) for access limits, domain status, and troubleshooting.
 
-## Infrastructure and external dependencies
+## Run locally
 
-This deployed implementation uses React, Tailwind, Cloudflare Workers, D1, and hosting-provided ChatGPT authentication. It adapts the proposed infrastructure in the PDF: it does not deploy Node/Express, MongoDB Atlas, Redis/WebSockets, JWT accounts, Python/XGBoost, Firebase, Vercel, or Railway.
+Use **Node.js 24 LTS** and **pnpm 11.25.0**. See [the complete setup guide](docs/DEVELOPMENT.md), including installation prerequisites and the local sign-in limitation.
 
-The following need actual service accounts, credentials, data, and operational onboarding before a full public production rollout:
+```bash
+git clone https://github.com/patelyuvraj1133-commits/farmer-project.git
+cd farmer-project
+pnpm install --frozen-lockfile
+node -e "require('node:fs').copyFileSync('.env.example', '.env')"
+pnpm db:migrate:local
+pnpm dev
+```
 
-- SMS, IVR, Firebase/background push notifications.
-- Government procurement/FCI/e-NAM feeds and official approvals.
-- Banking or payment gateway settlement and reconciliation. The existing payment action only records an external transfer; it never sends funds or confirms bank settlement.
-- Historical arrival data and evaluation for a trained rush-prediction model.
-- Public farmer-friendly identity/OTP requirements if ChatGPT sign-in is unsuitable.
-- A user-owned custom domain and DNS configuration, if the provided hosting URL is not the desired address.
+Open the localhost URL printed by the development server. The template keeps administrator bootstrap disabled. Follow the guide's **local-only administrator setup** before testing operator workflows.
 
-The application never labels invented queue values as live and never marks payments automatically.
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
 
-## Development
+A GitHub upload does not deploy this backend. GitHub Pages cannot run its API or D1 database. [Deployment instructions](docs/DEPLOYMENT.md) describe the supported Sites route and the requirements for another host.
 
-Preserve the existing pnpm lockfile. Hosting identity and logical database binding are in `.openai/hosting.json`; runtime configuration belongs in hosting environment settings, not the manifest or source control. `.env.example` lists the bootstrap key without secrets.
+## Architecture and source map
 
-- Generate schema migrations: `node node_modules/drizzle-kit/bin.cjs generate`.
-- Type check: `node node_modules/typescript/bin/tsc --noEmit`.
-- Backend verification: `node --test tests/service.test.mjs` (Node 24; uses the actual service and generated schema through a SQLite-backed D1 adapter).
-- Build with the Sites `build-site.mjs` helper. Preserve `sites()` in the existing Vite configuration.
+The application uses React, TypeScript, Tailwind, Next-style App Router code through **Vinext/Vite**, Cloudflare Workers, Cloudflare D1/SQLite, and Drizzle migrations.
 
-Production schema changes use reviewed Drizzle migrations. Once deployed, existing migration files and metadata are immutable. Do not seed examples into production. Runtime handlers do not create or alter tables.
+| Path | Purpose |
+| --- | --- |
+| `app/`, `components/` | Pages, account/workflow screens and UI components |
+| `app/api/[...path]/route.ts` | HTTP entry point |
+| `app/chatgpt-auth.ts` | Reads identity supplied by the trusted hosting gateway |
+| `lib/service.ts`, `lib/domain.ts` | Authorization, SQL operations and business rules |
+| `db/` | Schema and runtime database adapters |
+| `drizzle/` | Reviewed SQL migrations and migration metadata |
+| `tests/service.test.mjs` | Integration tests against the actual service and SQLite schema |
+| `scripts/`, `build/` | Local setup, build and hosting support |
+| `.github/workflows/` | Automated verification and secret scanning |
+| `.env.example` | Non-secret configuration template |
 
-## Validation scope
+The original proposal referenced `Mandimitra@SIH.pdf`; that document is not included in this repository. This implementation uses Workers/D1 rather than the proposal's Node/Express, MongoDB, Redis, Python/XGBoost, Firebase, Vercel or Railway stack.
 
-Thirteen backend integration tests cover authentication boundaries, CSRF rejection, scoped access, registration and verification, queue fairness, desk capacity, idempotency, concurrent booking limits, stale updates, cancellations, money calculations, payment history, notifications, midnight carryover, and concurrent schedule changes. The original build documentation reports passing TypeScript checks and production build; these checks were not rerun during this source export.
+## Validation and remaining work
 
-Tests exercise the actual SQL against SQLite with a D1-compatible adapter; they are not a measurement of production D1 throughput or a substitute for a multi-user live pilot. Browser/end-to-end UI testing was not performed in this session. The optional `read_my_procurement_records` WebMCP tool is feature-detected, read-only, and reuses displayed state; a supported permitted WebMCP runtime was unavailable for validation.
+The backend suite exercises service authorization, bootstrap behavior, profile verification, bookings, concurrency boundaries, queue fairness, cancellations, monetary calculations and event history. It uses SQLite with a D1-compatible adapter. It does **not** prove production D1 throughput, the hosting gateway's authentication behavior, or end-to-end browser compatibility.
 
-No software can promise zero defects, zero latency, or unlimited peak traffic. Actual capacity, field adoption, identity requirements, and connected integrations must be validated before operational rollout.
+[GitHub Actions](https://github.com/patelyuvraj1133-commits/farmer-project/actions) runs tests, type checking, a production build, local migration checks, and Gitleaks. Read the run result for the commit you are evaluating; the existence of a workflow is not evidence that it passed.
+
+Before operational use, the project still needs:
+
+- Date-specific holiday closures and evaluation of the historical estimates.
+- SMS/IVR/background notifications, if required.
+- Government procurement feeds, permissions and operator onboarding.
+- Payment-provider settlement and reconciliation, if required.
+- An identity option suitable for farmers who cannot use ChatGPT.
+- Multi-user browser testing, load testing, monitoring and backup/restore drills.
+
+## Support and reuse
+
+Use [GitHub Issues](https://github.com/patelyuvraj1133-commits/farmer-project/issues) for bugs without private records. Follow [SECURITY.md](SECURITY.md) for vulnerabilities and [the data-handling notes](docs/DATA_HANDLING.md) before collecting real farmer information.
+
+Project source remains all rights reserved; see [LICENSE](LICENSE). Bundled third-party components retain their own licenses. A public repository is not a claim of government endorsement or production certification.
