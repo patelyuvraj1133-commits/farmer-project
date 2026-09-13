@@ -1,0 +1,13 @@
+Copyright (c) 2026 Yuvraj Patel. All rights reserved.
+
+No additional license to use, modify, or redistribute the original MandiMitra
+application code is granted by this notice. Contact the repository owner for
+permission. This notice does not limit rights granted by applicable platform
+terms or law.
+
+Third-party code and dependencies remain subject to their respective licenses,
+including build/sites-vite-plugin.LICENSE and
+vendor/shadcn-tailwind-4.13.0.LICENSE.md.
+
+This repository is source-available for presentation and review; it is not
+offered under an open-source license.

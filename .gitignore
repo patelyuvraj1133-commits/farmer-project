@@ -46,3 +46,14 @@ next-env.d.ts
 /.codex/
 /outputs/
 /work/
+
+# Wrangler local environment values and local database exports
+.dev.vars
+.dev.vars.*
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz

@@ -42,6 +42,23 @@ test('anonymous writes, cross-origin writes, missing client header, and malforme
  assert.equal((await request(owner,'profile',{...profile,phone:'123'})).status,400);
  assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM users').get().n,0);
 });
+test('disabled bootstrap never grants administrator to the first registration', async () => {
+ sql.exec('BEGIN');
+ try {
+  const response = await handleApi(db, owner, new Request('https://mandimitra.example/api/profile', {
+   method: 'POST',
+   headers: {'Content-Type':'application/json','X-MandiMitra-Client':'web','Origin':'https://mandimitra.example'},
+   body: JSON.stringify({...profile, name:'Owner'}),
+  }), false);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.user.role, 'farmer');
+  assert.equal(body.user.verified, 0);
+  assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin'").get().n, 0);
+ } finally {
+  sql.exec('ROLLBACK');
+ }
+});
 test('owner-private bootstrap creates one admin and later accounts remain farmers',async()=>{
  const first=await ok(owner,'profile',{...profile,name:'Owner'});assert.equal(first.user.role,'admin');assert.equal(first.user.verified,1);
  mandi1=(await ok(owner,'mandis',config)).id;mandi2=(await ok(owner,'mandis',{...config,name:'Second Test Centre'})).id;
